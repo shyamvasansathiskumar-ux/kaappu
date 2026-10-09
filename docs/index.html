@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaappu · the 2FA you can't lose</title>
+<meta name="description" content="Kaappu (காப்பு, Tamil for protection) is a TOTP authenticator in plain Java whose vault key is split with Shamir's Secret Sharing. Any two shares rebuild it. One alone reveals nothing. Try it live in your browser.">
+<meta name="theme-color" content="#e8e1d3">
+<meta property="og:title" content="Kaappu · the 2FA you can't lose">
+<meta property="og:description" content="A TOTP authenticator built from the RFCs, with a vault key split into shares. By Shyam Kumar.">
+<meta property="og:image" content="og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e8e1d3'/%3E%3Ccircle cx='32' cy='32' r='15' fill='%232a3cf2'/%3E%3C/svg%3E">
+<link rel="preload" href="cormorant.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="site.css">
+<script>document.documentElement.classList.add("js")</script>
+<script type="importmap">{ "imports": { "three": "./three.module.min.js" } }</script>
+</head>
+<body>
+<div class="loader" aria-hidden="true">
+  <div class="who"><span class="label bare">Kaappu · காப்பு</span><span class="label bare">Shyam Kumar</span></div>
+  <div class="n"><b>00</b><sup>%</sup></div>
+</div>
+<canvas id="world" aria-hidden="true"></canvas>
+<ol class="rail" aria-label="Chapters"></ol>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="dot"></span>Kaappu <span class="tamil">காப்பு</span></a>
+    <ul>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#try">Try it</a></li>
+      <li><a href="#shares">Shares</a></li>
+      <li><a href="#proof">Proof</a></li>
+    </ul>
+    <a class="btn sm ghost" href="https://github.com/shyamvasansathiskumar-ux/kaappu" target="_blank" rel="noopener">Source <span class="arr">↗</span></a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- 00 · hero -->
+  <section class="hero" id="hero" data-stage="0" data-chapter="Kaappu">
+    <div class="wrap hero-in">
+      <p class="label" data-intro>Applied cryptography · Java · RFC 4226 / 6238</p>
+      <h1 class="display hero-title" data-intro-split>Kaap<em>pu</em></h1>
+      <p class="hero-tamil" data-intro><span class="tamil">காப்பு</span> <span class="sep"></span> Tamil for <em>protection</em></p>
+      <div class="hero-foot">
+        <p class="lede" data-intro>A two-factor authenticator <strong>you can't lose.</strong> The key to the vault is split into shares, so a dropped phone stops being the end of your accounts.</p>
+        <div class="hero-code card" data-intro aria-live="off">
+          <span class="label bare">Live · demo secret</span>
+          <b class="code" id="heroCode">––– –––</b>
+          <svg class="ring" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17"/><circle class="arc" id="heroArc" cx="20" cy="20" r="17"/></svg>
+          <span class="secs mono" id="heroSecs">30s</span>
+        </div>
+      </div>
+      <div class="hero-cta" data-intro>
+        <a class="btn acc" href="#try">Try it in your browser <span class="arr">→</span></a>
+        <a class="btn ghost" href="#how">How six digits are made</a>
+      </div>
+    </div>
+    <div class="wrap hero-meta" data-intro>
+      <span class="label bare">70 tests</span><span class="label bare">No dependencies</span><span class="label bare">≈1,100 lines of Java</span><span class="label bare scroll-cue">Scroll</span>
+    </div>
+  </section>
+
+  <!-- 01 · the problem -->
+  <section id="problem" data-stage="1" data-chapter="The problem">
+    <div class="wrap grid">
+      <div class="col-l">
+        <p class="label" data-scramble>01 · The problem</p>
+      </div>
+      <div class="col-r stack">
+        <h2 class="h1" data-split>Nobody hacks your 2FA. <em>You drop it.</em></h2>
+        <p class="body big" data-rise>The usual way people lose their two-factor accounts isn't an attacker. It's a dropped phone, a factory reset, or an app that never synced. Recovery codes get printed once and filed somewhere nobody remembers.</p>
+        <div class="trio" data-stagger>
+          <div class="card t"><span class="n">i.</span><h3 class="h3">The phone breaks</h3><p>Every secret lived in one app, on one device.</p></div>
+          <div class="card t"><span class="n">ii.</span><h3 class="h3">The backup is a password</h3><p>Forget it, or lose the person who knew it, and the backup is a locked box.</p></div>
+          <div class="card t acc"><span class="n">iii.</span><h3 class="h3">Kaappu splits the key</h3><p>Three shares in three places. Any two open the vault. One alone is useless to a thief.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true"><div class="track" data-speed="44"><span>RFC 4226</span><span>RFC 6238</span><span>RFC 4648</span><span>Shamir over GF(2⁸)</span><span>AES-256-GCM</span><span>PBKDF2 · 600,000</span></div></div>
+
+  <!-- 02 · how six digits are made (pinned horizontal) -->
+  <section id="how" class="how" data-stage="2" data-chapter="Six digits">
+    <div class="wrap how-head">
+      <p class="label" data-scramble>02 · How it works</p>
+      <h2 class="h1" data-split>Six digits, <em>four moves.</em></h2>
+      <p class="body" data-rise>This is the whole algorithm, running live on a demo secret. Every number below changes as the clock does.</p>
+    </div>
+    <div class="hscroll" id="hscroll">
+      <div class="cards" id="cards">
+        <article class="step card">
+          <header><span class="num">1</span><span class="label bare">The clock</span></header>
+          <h3 class="h3">Count thirty-second steps since 1970.</h3>
+          <div class="live">
+            <div class="kv"><span>unix time</span><b class="mono" id="sUnix">–</b></div>
+            <div class="kv"><span>÷ 30, floor</span><b class="mono hl" id="sStep">–</b></div>
+            <div class="bar"><i id="sBar"></i></div>
+          </div>
+          <p class="fine">Your phone and the server never talk. They agree because they read the same clock. <code>T = ⌊unix / 30⌋</code></p>
+        </article>
+        <article class="step card">
+          <header><span class="num">2</span><span class="label bare">The HMAC</span></header>
+          <h3 class="h3">Sign the step with the shared secret.</h3>
+          <div class="live"><div class="bytes" id="sBytes" aria-label="HMAC-SHA1 output, 20 bytes"></div></div>
+          <p class="fine"><code>HMAC-SHA1(secret, T)</code> gives 20 bytes. The last half-byte, highlighted, is <b id="sOff" class="mono hl">–</b>: that's where we cut.</p>
+        </article>
+        <article class="step card">
+          <header><span class="num">3</span><span class="label bare">Truncate</span></header>
+          <h3 class="h3">Take four bytes from that offset.</h3>
+          <div class="live">
+            <div class="kv"><span>bytes</span><b class="mono" id="sFour">–</b></div>
+            <div class="kv"><span>& 0x7fffffff</span><b class="mono hl" id="sInt">–</b></div>
+          </div>
+          <p class="fine">The mask drops the sign bit. Without it, Java reads those four bytes as a negative number, and the code comes out wrong one time in two.</p>
+        </article>
+        <article class="step card final">
+          <header><span class="num">4</span><span class="label bare">mod 10⁶</span></header>
+          <h3 class="h3">Keep the last six digits.</h3>
+          <div class="live"><b class="bigcode mono" id="sCode">––– –––</b></div>
+          <p class="fine">That's the code in your app right now, for this demo secret. Same maths, same answer, on every device that shares the secret.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 · try it -->
+  <section id="try" data-stage="3" data-chapter="Try it">
+    <div class="wrap grid">
+      <div class="col-l stack">
+        <p class="label" data-scramble>03 · Try it</p>
+        <h2 class="h2" data-split>Paste a secret. <em>Get codes.</em></h2>
+        <p class="body" data-rise>Paste an <code>otpauth://</code> link or a Base32 secret, the "can't scan it?" key a site shows next to its QR code. Everything runs on this page with WebCrypto. Nothing is stored and nothing is sent.</p>
+        <p class="body warn" data-rise>Don't paste secrets for real accounts into any web page, this one included. Use the demo, or a throwaway.</p>
+      </div>
+      <div class="col-r">
+        <div class="tool card" data-rise>
+          <label class="field"><span>Secret or otpauth:// link</span>
+            <input class="input" id="src" spellcheck="false" autocomplete="off" value="otpauth://totp/Demo:shyam?secret=JBSWY3DPEHPK3PXP&issuer=Demo">
+          </label>
+          <p class="msg" id="genmsg"></p>
+          <div class="now">
+            <div>
+              <span class="label bare">Code now</span>
+              <b class="code-xl mono" id="now">––– –––</b>
+              <span class="next mono" id="next"></span>
+            </div>
+            <div class="dial">
+              <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27"/><circle class="arc" id="arc" cx="32" cy="32" r="27"/></svg>
+              <b class="mono" id="secs">30</b>
+            </div>
+          </div>
+          <div class="verify">
+            <label class="field"><span>Verify a code, once</span>
+              <div class="row"><input class="input" id="tryCode" inputmode="numeric" placeholder="6 digits" maxlength="8"><button class="btn" id="verify">Verify</button></div>
+            </label>
+            <p class="msg" id="vmsg">Type the code above and press Verify. Then press it again: a code that has been used once is refused, as RFC 6238 §5.2 asks.</p>
+          </div>
+          <div class="presets">
+            <span class="label bare">Load</span>
+            <button class="chip" data-uri="otpauth://totp/Demo:shyam?secret=JBSWY3DPEHPK3PXP&issuer=Demo">Demo</button>
+            <button class="chip" data-uri="otpauth://totp/RFC%206238:SHA-256?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA&issuer=RFC%206238&algorithm=SHA256&digits=8">RFC seed · SHA-256 · 8</button>
+            <button class="chip" data-uri="otpauth://totp/Evil:shyam?secret=JBSWY3DPEHPK3PXP&issuer=Google">Tampered QR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 · shares -->
+  <section id="shares" data-stage="4" data-chapter="Shares">
+    <div class="wrap">
+      <div class="shares-head">
+        <p class="label" data-scramble>04 · Shamir's Secret Sharing</p>
+        <h2 class="h1" data-split>Any two rebuild it. <em>One alone reveals nothing.</em></h2>
+      </div>
+      <div class="grid shares-body">
+        <div class="col-l stack">
+          <p class="body" data-rise>Each byte of the key becomes the starting point of a random curve. Every share is one point on every curve. Two points fix a line, so any two shares give the key back. One point fits every possible key equally well, so one share says nothing.</p>
+          <p class="body" data-rise>The arithmetic happens in GF(2⁸), the same 256-element field AES uses, so nothing ever overflows and nothing leaks through rounding. Each share ends in a checksum, so a one-character typo is caught before it can rebuild the wrong key.</p>
+          <ol class="places" data-stagger>
+            <li><span class="mono">01</span> With a parent</li>
+            <li><span class="mono">02</span> In a drawer</li>
+            <li><span class="mono">03</span> In a password manager</li>
+          </ol>
+        </div>
+        <div class="col-r">
+          <div class="tool card" data-rise>
+            <div class="split-ctl">
+              <label class="field grow"><span>Secret</span><input class="input" id="secret" value="the vault key" spellcheck="false"></label>
+              <label class="field"><span>Shares</span><select class="input" id="n"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+              <label class="field"><span>Needed</span><select class="input" id="k"><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label>
+              <button class="btn acc" id="dosplit">Split</button>
+            </div>
+            <ul class="sharelist" id="sharelist"></ul>
+            <label class="field"><span>Paste any shares, one per line</span><textarea class="input" id="pasted" rows="3" spellcheck="false"></textarea></label>
+            <div class="row gap">
+              <button class="btn" id="docombine">Rebuild</button>
+              <button class="btn ghost" id="useone">Try with one</button>
+              <button class="btn ghost" id="typo">Make a typo</button>
+            </div>
+            <p class="msg" id="cmsg"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · vault -->
+  <section id="vault" class="ink-band" data-stage="5" data-chapter="The vault">
+    <div class="wrap">
+      <div class="vault-head">
+        <p class="label" data-scramble>05 · The vault</p>
+        <h2 class="h1" data-split>Locked like it matters.</h2>
+      </div>
+      <div class="vault-grid" data-stagger>
+        <div class="v"><b class="mono">AES-256-GCM</b><p>The vault file is encrypted and authenticated. Flip one bit and it refuses to open.</p></div>
+        <div class="v"><b class="mono">PBKDF2 · 600,000</b><p>Your password is stretched with HMAC-SHA256, 600,000 rounds, before it becomes a key.</p></div>
+        <div class="v"><b class="mono">Two keys</b><p>Shares are taken of the data key, not your password, so they still work after you change it.</p></div>
+        <div class="v"><b class="mono">Atomic writes</b><p>The file is written to a temp file and moved into place, chmod 600. A crash never leaves half a vault.</p></div>
+        <div class="v"><b class="mono">No argv secrets</b><p>Secrets are read from a hidden prompt, never the command line, so they stay out of shell history and <code>ps</code>.</p></div>
+        <div class="v"><b class="mono">QR tamper check</b><p>If the issuer in a QR link's label disagrees with its issuer field, Kaappu refuses it instead of guessing.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 · proof -->
+  <section id="proof" data-stage="6" data-chapter="Proof">
+    <div class="wrap grid">
+      <div class="col-l stack">
+        <p class="label" data-scramble>06 · Proof</p>
+        <div class="tally"><b id="passed">–</b><span id="tallytext">checks running in this browser</span></div>
+        <p class="body" data-rise>Every published test vector from RFC 4226, RFC 6238 and RFC 4648, plus a Shamir round trip, run right now by the code on this page. The Java CLI runs 70 checks, including the vault, replays and every 3-of-5 combination.</p>
+      </div>
+      <div class="col-r">
+        <div class="vectors card" data-rise>
+          <table>
+            <thead><tr><th>Vector</th><th>Expected</th><th>Got</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 · run it -->
+  <section id="run" data-stage="7" data-chapter="Run it">
+    <div class="wrap grid">
+      <div class="col-l stack">
+        <p class="label" data-scramble>07 · Run it</p>
+        <h2 class="h2" data-split>Plain Java. <em>Read it in an evening.</em></h2>
+        <p class="body" data-rise>It started as a project my dad set me: build an authenticator from the RFCs, without a library doing the interesting part. Needs JDK 17 or newer.</p>
+        <div class="limits card" data-rise>
+          <p class="label bare">Read this before trusting it</p>
+          <p>A learning project that takes security seriously, not an audited product. SECURITY.md lists what it defends against and where it stops. For your bank, keep your phone's authenticator too, and treat Kaappu as the backup you can actually recover.</p>
+        </div>
+      </div>
+      <div class="col-r">
+<pre class="term" data-rise><span class="dim">$</span> sh build.sh test        <span class="dim"># 70 checks, every RFC vector</span>
+<span class="dim">$</span> sh build.sh
+<span class="dim">$</span> java -jar build/kaappu.jar init
+<span class="dim">$</span> java -jar build/kaappu.jar add
+<span class="dim">$</span> java -jar build/kaappu.jar backup 2 3
+Any 2 of these 3 shares can open this vault without the password.
+Store each one in a different place. Fewer than 2 reveal nothing.
+
+  <span class="acc">kaappu-share-2-1-267c54b2ca34fbcf…bd24-11fb</span>
+  <span class="acc">kaappu-share-2-2-b564e288628883c2…02a5-5216</span>
+  <span class="acc">kaappu-share-2-3-c46c799ef315ab30…9eda-f974</span>
+
+<span class="dim">$</span> java -jar build/kaappu.jar code
+GitHub (shyam)                   <span class="ok">754 478</span>   25s left</pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="big">Kaap<em>pu</em>.</p>
+    <div class="row">
+      <div class="links">
+        <a class="btn acc" href="https://github.com/shyamvasansathiskumar-ux/kaappu" target="_blank" rel="noopener">Source on GitHub <span class="arr">↗</span></a>
+        <a class="btn ghost" href="https://shyamvasansathiskumar-ux.github.io/kaaval/">Kaaval, the agent guard <span class="arr">→</span></a>
+        <a class="btn ghost" href="https://shyamvasansathiskumar-ux.github.io/fairdoor/">FairDoor <span class="arr">→</span></a>
+      </div>
+      <small>Shyam Kumar · REC Chennai · 2026<br>Built with Claude as a pair programmer. MIT licence.</small>
+    </div>
+  </div>
+</footer>
+
+<script src="gsap.min.js"></script>
+<script src="ScrollTrigger.min.js"></script>
+<script src="SplitText.min.js"></script>
+<script src="ScrambleTextPlugin.min.js"></script>
+<script src="lenis.min.js"></script>
+<script src="motion.js"></script>
+<script src="kaappu-core.js"></script>
+<script src="app.js"></script>
+<script type="module" src="scene.js"></script>
+</body>
+</html>
