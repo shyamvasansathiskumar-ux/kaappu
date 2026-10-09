@@ -2,6 +2,8 @@
 
 *Kaappu* (காப்பு) is Tamil for protection. It is a command-line TOTP authenticator in plain Java with one feature most authenticator apps don't have: **you can't lose it.**
 
+**Try it live:** [shyamvasansathiskumar-ux.github.io/kaappu](https://shyamvasansathiskumar-ux.github.io/kaappu/), the same maths running in your browser, with every RFC test vector checked on the page. The site's source is in [`docs/`](docs/).
+
 The usual way people lose access to their 2FA accounts isn't a hacker. It's a dropped phone, a factory reset, or an app that never synced. Kaappu splits the key to your vault into shares using Shamir's Secret Sharing. Make three, give one to a parent, keep one in a drawer and one in your password manager, and any two of them will rebuild the vault. One share on its own reveals nothing.
 
 ```
